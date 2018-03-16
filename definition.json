@@ -1,0 +1,108 @@
+{
+  "objects": [
+    {
+      "*password": "#{*myRDSPassword}",
+      "name": "rds_mysql",
+      "jdbcProperties": "allowMultiQueries=true",
+      "id": "rds_mysql",
+      "type": "RdsDatabase",
+      "rdsInstanceId": "#{myRDSInstanceId}",
+      "username": "#{myRDSUsername}"
+    },
+    {
+      "database": {
+        "ref": "rds_mysql"
+      },
+      "name": "SourceRDSTable",
+      "id": "SourceRDSTable",
+      "type": "SqlDataNode",
+      "table": "#{myRDSTableName}",
+      "selectQuery": "select * from #{table}"
+    },
+    {
+      "instanceType": "#{myEC2InstanceType}",
+      "name": "Ec2Instance",
+      "actionOnTaskFailure": "terminate",
+      "securityGroups": "#{myEc2RdsSecurityGrps}",
+      "id": "Ec2Instance",
+      "type": "Ec2Resource",
+      "terminateAfter": "2 Hours"
+    },
+    {
+      "output": {
+        "ref": "S3OutputLocation"
+      },
+      "input": {
+        "ref": "SourceRDSTable"
+      },
+      "name": "RDStoS3CopyActivity",
+      "runsOn": {
+        "ref": "Ec2Instance"
+      },
+      "id": "RDStoS3CopyActivity",
+      "type": "CopyActivity"
+    },
+    {
+      "failureAndRerunMode": "CASCADE",
+      "resourceRole": "DataPipelineDefaultResourceRole",
+      "role": "DataPipelineDefaultRole",
+      "scheduleType": "ONDEMAND",
+      "name": "Default",
+      "id": "Default"
+    },
+    {
+      "directoryPath": "#{myOutputS3Loc}/#{format(@scheduledStartTime, 'YYYY-MM-dd-HH-mm-ss')}",
+      "name": "S3OutputLocation",
+      "id": "S3OutputLocation",
+      "type": "S3DataNode"
+    }
+  ],
+  "parameters": [
+    {
+      "description": "RDS MySQL password",
+      "id": "*myRDSPassword",
+      "type": "String"
+    },
+    {
+      "description": "Output S3 folder",
+      "id": "myOutputS3Loc",
+      "type": "AWS::S3::ObjectKey"
+    },
+    {
+      "description": "RDS MySQL username",
+      "id": "myRDSUsername",
+      "type": "String"
+    },
+    {
+      "description": "RDS MySQL table name",
+      "id": "myRDSTableName",
+      "type": "String"
+    },
+    {
+      "description": "Ec2 Security group(s)",
+      "isArray": "true",
+      "optional": "true",
+      "id": "myEc2RdsSecurityGrps",
+      "type": "String"
+    },
+    {
+      "default": "r3.xlarge",
+      "description": "EC2 instance type",
+      "id": "myEC2InstanceType",
+      "type": "String"
+    },
+    {
+      "description": "RDS Instance ID",
+      "id": "myRDSInstanceId",
+      "type": "String"
+    }
+  ],
+  "values": {
+    "myRDSInstanceId": "database.abcde123456.eu-west-1.rds.amazonaws.com",
+    "myRDSUsername": "rdsuser",
+    "myEC2InstanceType": "r3.xlarge",
+    "myOutputS3Loc": "s3://my-output-logs/",
+    "*myRDSPassword": "rdspassword",
+    "myRDSTableName": "rdstable"
+  }
+}
